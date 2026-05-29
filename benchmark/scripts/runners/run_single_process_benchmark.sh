@@ -141,6 +141,11 @@ for RMW in "${RMW_LIST[@]}"; do
   # Set the RMW_IMPLEMENTATION for the benchmark process.
   export RMW_IMPLEMENTATION="rmw_${RMW}_cpp"
 
+  # Promote zenoh config URIs (set in the .conf) to the environment so they
+  # reach the irobot_benchmark child process — rmw_zenoh_cpp reads them from env.
+  export ZENOH_SESSION_CONFIG_URI
+  export ZENOH_ROUTER_CONFIG_URI
+
   # Dynamically get the COMMS and LOANED_ENV_VARS arrays for the current RMW.
   declare -n COMMS="COMMS_${RMW}"
   declare -n LOANED_ENV_VARS="LOANED_ENV_VARS_${RMW}"
