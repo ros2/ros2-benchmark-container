@@ -6,7 +6,7 @@
         {
           "topic_name": "idle_topic",
           "msg_type": "stamped100kb",
-          "freq_hz": 3600000,
+          "period_ms": 3600000,
           "msg_pass_by": "unique_ptr"
         }
       ]
