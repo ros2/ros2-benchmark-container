@@ -428,11 +428,38 @@ def generate_report(
         f"The following RMWs were tested: <b>{', '.join(supported_rmws)}</b>.<br/>",
     )
 
+    system_executor = os.getenv("SYSTEM_EXECUTOR", "unknown")
+    # Thread count only applies to the thread-pool executors. Show it only for
+    # those — for the others it would be misleading.
+    multithreaded_executors = {"MultiThreadedExecutor", "EventsCBGExecutor"}
+    threads_line = ""
+    if system_executor in multithreaded_executors:
+        raw_threads = os.getenv("SYSTEM_EXECUTOR_THREADS", "0")
+        try:
+            threads_value = int(raw_threads)
+        except ValueError:
+            threads_value = 0
+        if threads_value > 0:
+            threads_display = str(threads_value)
+        else:
+            # 0 -> irobot_benchmark fell back to std::thread::hardware_concurrency().
+            # os.cpu_count() returns the same number (logical CPUs, ignoring CPU
+            # affinity), so this matches what the benchmark binary actually saw
+            # as long as report generation runs on the same host as the runs.
+            detected = os.cpu_count()
+            threads_display = (
+                f"{detected} (hardware_concurrency default)"
+                if detected
+                else "hardware_concurrency (default)"
+            )
+        threads_line = f"• <b>Executor Threads:</b> {threads_display}<br/>"
+
     add_normal_text(
         elements,
         "System Information:<br/>"
         f"• <b>ROS Version:</b> {os.getenv('ROS_DISTRO', 'unknown')}<br/>"
-        f"• <b>System Executor:</b> {os.getenv('SYSTEM_EXECUTOR', 'unknown')}<br/>"
+        f"• <b>System Executor:</b> {system_executor}<br/>"
+        f"{threads_line}"
         f"• <b>Architecture:</b> {platform.machine()}<br/>",
     )
 
@@ -840,7 +867,7 @@ def generate_report(
         "with an extremely long publishing period, set to 1 hour, ensuring that no actual messages are transmitted during the test duration. <br/><br/>"
         "The test is configured using the <i>single_process_pub_sub_idle.conf</i> file, which sets the pub_sub_idle topology. "
         "This topology defines an idle_pub_node with a publisher sending stamped100kb messages at an extremely low frequency "
-        "(3600000 Hz, simulating 1 hour period), and an idle_sub_node subscribing to the same idle_topic. <br/><br/>"
+        "(period_ms: 3600000, i.e. one publish per hour), and an idle_sub_node subscribing to the same idle_topic. <br/><br/>"
         "The test runs for at least 1 minute to avoid measurement bias caused by CPU spikes typically observed during node startup or shutdown.",
     )
     add_plot(elements, results_dir, "cpu_usage_over_time_idle_local_test")
@@ -919,7 +946,7 @@ Arguments:
     results_date = os.path.basename(os.path.normpath(args.results_directory)).replace(
         "results_", ""
     )
-    report_path = os.path.join(args.output, f"report_{results_date}.pdf")
+    report_path = os.path.join(args.output, f"report_{platform.machine()}_{os.getenv('ROS_DISTRO', 'distro_unknown')}_{os.getenv('SYSTEM_EXECUTOR', 'executor_unknown')}_{results_date}.pdf")
     print(f"Generating report {report_path}")
     generate_report(parsed_results_directory, report_path, args.skip_long_tests)
 

@@ -92,7 +92,7 @@ GOVERNOR_SCRIPT="${ROS2_BENCHMARK_SCRIPTS_DIR}/utils/set_cpu_governor.sh"
 IROBOT_BENCHMARK="${PERF_FRAMEWORK_INSTALL_DIR}/irobot_benchmark/irobot_benchmark"
 
 # Possible args for different executor types
-declare -A EXECUTOR_ARGS=( ["SingleThreadedExecutor"]="1" ["EventsExecutor"]="2" ["MultiThreadedExecutor"]="3")
+declare -A EXECUTOR_ARGS=( ["SingleThreadedExecutor"]="1" ["EventsExecutor"]="2" ["MultiThreadedExecutor"]="3" ["EventsCBGExecutor"]="4")
 
 # Configure system executor, using the EventsExecutor by default. 
 if [[ -z "${SYSTEM_EXECUTOR}" ]]; then
@@ -104,6 +104,14 @@ if [[ -v EXECUTOR_ARGS[${SYSTEM_EXECUTOR}] ]]; then
 else 
   echo -e "Invalid executor ${SYSTEM_EXECUTOR}. Please choose from SingleThreadedExecutor, MultiThreadedExecutor or EventsExecutor."
   exit 1
+fi
+
+# Thread count for thread-pool executors. Only forwarded when explicitly set to
+# a positive value — otherwise irobot_benchmark falls back to its own default
+# (hardware_concurrency).
+THREADS_OPTION=""
+if [[ -n "${SYSTEM_EXECUTOR_THREADS}" && "${SYSTEM_EXECUTOR_THREADS}" -gt 0 ]]; then
+  THREADS_OPTION="--threads ${SYSTEM_EXECUTOR_THREADS}"
 fi
 
 # Set CPU governor to 'performance' mode for consistent results.
@@ -214,11 +222,11 @@ for RMW in "${RMW_LIST[@]}"; do
 
       # --- Local Benchmark Execution ---
       # Construct and execute the main benchmark command.
-      COMMAND="${IROBOT_BENCHMARK} ${TOPOLOGY_PATH} --executor ${EXECUTOR_ARG}  ${IPC_OPTION} -t ${ROS2_BENCHMARK_TEST_DURATION} -s 1000 --csv-out on --results-dir ${RESULT_FOLDER}"
+      COMMAND="${IROBOT_BENCHMARK} ${TOPOLOGY_PATH} --executor ${EXECUTOR_ARG} ${THREADS_OPTION} ${IPC_OPTION} -t ${ROS2_BENCHMARK_TEST_DURATION} -s 1000 --csv-out on --results-dir ${RESULT_FOLDER}"
       echo -e "     Command: \n       $COMMAND"
 
       eval "$COMMAND"
-      local benchmark_exit_code=$?
+      benchmark_exit_code=$?
 
       if [[ -n ${ROUTER_PID} ]]; then 
         echo "Stopping zenoh router with PID $ROUTER_PID"
