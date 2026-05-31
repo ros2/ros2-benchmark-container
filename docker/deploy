@@ -83,19 +83,14 @@ fi
 
 IMAGE_NAME=${APP_NAME}
 TAG=${ROS_DISTRO}-${ARCH}
-echo "deploy: Looking for ${IMAGE_NAME}:${TAG} on this computer."
+FOUND_IMAGE="${IMAGE_NAME}:${TAG}"
+echo "deploy: Looking for ${FOUND_IMAGE} on this computer."
 
-# Get the image name and tag
-RAW_IMAGE_STR=$(docker image ls | grep -E ${IMAGE_NAME} | grep -E ${TAG})
-IMAGE_ARR=($RAW_IMAGE_STR)
-
-if [ -z ${IMAGE_ARR[0]+x} ]; then 
-  echo "deploy: Image ${IMAGE_NAME}:${TAG} not found. Are you trying to send a container that hasn't been built yet?"
+if ! docker image inspect "${FOUND_IMAGE}" > /dev/null 2>&1; then
+  echo "deploy: Image ${FOUND_IMAGE} not found. Are you trying to send a container that hasn't been built yet?"
   exit 1
-else
-  FOUND_IMAGE=${IMAGE_ARR[0]}:${IMAGE_ARR[1]}
-  echo "deploy: Found image ${FOUND_IMAGE}."
 fi
+echo "deploy: Found image ${FOUND_IMAGE}."
 
 # Store container in a .tgz
 DEFAULT_IMAGE_FILE_NAME="${APP_NAME}-${TAG}.tgz"
