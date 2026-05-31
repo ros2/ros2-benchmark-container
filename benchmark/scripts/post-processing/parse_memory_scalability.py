@@ -56,7 +56,7 @@ def load_dataframe(file_path: str) -> pd.DataFrame:
     """
 
     with open(file_path, "r+", newline="") as f:
-        reader = csv.reader(f, delimiter="\n")
+        reader = csv.reader(f)
         field_names, data = list(), defaultdict(list)
 
         for i, line in enumerate(reader):
