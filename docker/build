@@ -19,7 +19,7 @@ usage() {
   echo "Usage: $0 [-d <ros_distro>] [-a <architecture>]"
   exit 1
 }
-SUPPORTED_DISTROS=("jazzy" "kilted" "rolling")
+SUPPORTED_DISTROS=("jazzy" "kilted" "lyrical" "rolling")
 # The ROS distribution to build the container for (default is "jazzy")
 ROS_DISTRO="jazzy"
 ARCH="$(dpkg --print-architecture)"
