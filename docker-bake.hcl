@@ -61,7 +61,7 @@ target "amd64" {
   ]
   args = {
     ROS_DISTRO = distro
-    BASE_IMAGE = "ros:${distro}"
+    BASE_IMAGE = "osrf/ros:${distro}-desktop"
   }
   platforms = ["${BAKE_LOCAL_PLATFORM}"]
 }
@@ -79,7 +79,7 @@ target "arm64" {
   ]
   args = {
     ROS_DISTRO = distro
-    BASE_IMAGE = "ros:${distro}"
+    BASE_IMAGE = "osrf/ros:${distro}-desktop"
   }
   platforms = ["linux/arm64/v8"]
 }
