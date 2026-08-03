@@ -60,4 +60,6 @@ PARENT_DIR=$(dirname "${THIS_DIR}")
 cd "$PARENT_DIR"
 
 echo "Building $ARCH ROS 2 Benchmark Container for ROS ${ROS_DISTRO}."
-docker buildx bake ${CONTAINER_BUILD_TARGET} --load
+# BAKE_EXTRA_ARGS lets CI inject cache flags (e.g. --set *.cache-from=type=gha,...)
+# without changing local behaviour; it is empty for normal local builds.
+docker buildx bake ${CONTAINER_BUILD_TARGET} --load ${BAKE_EXTRA_ARGS}
