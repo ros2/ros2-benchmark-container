@@ -216,7 +216,7 @@ for RMW in "${RMW_LIST[@]}"; do
       echo -e "     Command: \n       $COMMAND"
 
       eval "$COMMAND"
-      local benchmark_exit_code=$?
+      benchmark_exit_code=$?
 
       if [[ -n ${ROUTER_PID} ]]; then 
         echo "Stopping zenoh router with PID $ROUTER_PID"
