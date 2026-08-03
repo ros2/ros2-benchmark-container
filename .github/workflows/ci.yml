@@ -58,6 +58,7 @@ jobs:
               BENCH=/ws/src/ros2_benchmark_container/benchmark
               "$SCRIPTS/runners/run_single_process_benchmark.sh" "$BENCH/test-matrix/ci_single_process.conf"
               "$SCRIPTS/runners/run_multi_process_benchmark.sh"  "$BENCH/test-matrix/ci_multi_process.conf"
+              "$SCRIPTS/runners/run_memory_benchmark.sh"         "$BENCH/test-matrix/ci_memory_test.conf"
               "$BENCH/generate_all_metrics.sh" /benchmark_results/ci --skip-long-tests --skip-remote-tests
             '
       - name: Assert report artifacts exist
