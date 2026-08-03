@@ -6,9 +6,8 @@ on:
     branches: [rolling]
 
 jobs:
-  # Gate: every supported distro image must build.
-  build:
-    name: build (${{ matrix.distro }})
+  build-and-benchmark:
+    name: ${{ matrix.distro }}
     runs-on: ${{ matrix.os }}
     # todo: @skyegalaxy - add back once rclcpp w/ CBG Executor is available on kilted
     continue-on-error: ${{ matrix.distro == 'kilted' }}
@@ -35,19 +34,6 @@ jobs:
         # To enable a GHA build cache, export the buildx runtime token and set
         # BAKE_EXTRA_ARGS (e.g. --set *.cache-from=type=gha,scope=<distro> ...).
         run: docker/build -d ${{ matrix.distro }}
-
-  # Functional check: run the benchmark + post-processing pipeline on rolling
-  # (CBG executor is native there) and assert the report artifacts are produced.
-  benchmark-and-report:
-    name: benchmark + report (rolling)
-    runs-on: ubuntu-26.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - uses: docker/setup-buildx-action@v3
-      - name: Build rolling image
-        run: docker/build -d rolling
       - name: Run CI benchmarks + generate report
         # No --privileged and SKIP_CPU_GOVERNOR=1: GHA runners have no cpufreq
         # sysfs. benchmark/ is bind-mounted (it is not baked into the image) so
@@ -62,10 +48,11 @@ jobs:
             -e ROS2_BENCHMARK_OUTPUT_DIR=/benchmark_results/ci \
             -e ROS2_BENCHMARK_SCRIPTS_DIR=/ws/src/ros2_benchmark_container/benchmark/scripts \
             -e PERF_FRAMEWORK_INSTALL_DIR=/ws/install/lib \
-            ros2-benchmark-container:rolling-amd64 \
+            ros2-benchmark-container:${{ matrix.distro }}-amd64 \
             bash -c '
-              set -euo pipefail
-              source /opt/ros/rolling/setup.bash
+              # No set -u: ROS setup.bash references unset vars (AMENT_TRACE_SETUP_FILES).
+              set -eo pipefail
+              source /opt/ros/${{ matrix.distro }}/setup.bash
               source /ws/install/setup.bash
               SCRIPTS=/ws/src/ros2_benchmark_container/benchmark/scripts
               BENCH=/ws/src/ros2_benchmark_container/benchmark
@@ -86,6 +73,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ci-benchmark-report
+          name: ci-benchmark-report-${{ matrix.distro }}
           path: benchmark_results/ci
           if-no-files-found: warn
