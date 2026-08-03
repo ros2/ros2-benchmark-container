@@ -109,15 +109,22 @@ else
 fi
 
 # Set CPU governor to 'performance' mode for consistent results.
-original_governor=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor)
-echo "Setting CPU governor to 'performance'."
-$GOVERNOR_SCRIPT performance
-if [ $? -ne 0 ]; then
-  echo -e "\033[31m[ERROR] Failed to set CPU governor. Exiting.\033[0m"
-  exit 1
+# CI runners (e.g. GitHub-hosted) have no cpufreq sysfs and cannot change the
+# governor, so honor SKIP_CPU_GOVERNOR=1 to skip this tuning entirely. Unset (the
+# default) preserves the strict behavior required for reproducible measurements.
+if [[ "${SKIP_CPU_GOVERNOR}" != "1" ]]; then
+  original_governor=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor)
+  echo "Setting CPU governor to 'performance'."
+  $GOVERNOR_SCRIPT performance
+  if [ $? -ne 0 ]; then
+    echo -e "\033[31m[ERROR] Failed to set CPU governor. Exiting.\033[0m"
+    exit 1
+  fi
+  # Ensure the original governor is restored when the script exits.
+  trap "$GOVERNOR_SCRIPT $original_governor" EXIT
+else
+  echo "SKIP_CPU_GOVERNOR=1 set; leaving CPU governor unchanged."
 fi
-# Ensure the original governor is restored when the script exits.
-trap "$GOVERNOR_SCRIPT $original_governor" EXIT
 
 # Validate that essential variables are defined in the config file.
 if [[ -z "${RMW_LIST}" || -z "${TOPOLOGY1}" ]]; then
