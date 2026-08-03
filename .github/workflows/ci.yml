@@ -10,6 +10,8 @@ jobs:
   build:
     name: build (${{ matrix.distro }})
     runs-on: ${{ matrix.os }}
+    # todo: @skyegalaxy - add back once rclcpp w/ CBG Executor is available on kilted
+    continue-on-error: ${{ matrix.distro == 'kilted' }}
     strategy:
       fail-fast: false
       matrix:
