@@ -174,6 +174,10 @@ for RMW in "${RMW_LIST[@]}"; do
         sleep ${ZENOH_ROUTER_WAIT_TIMEOUT}
 
         ROUTER_PID=$(pgrep zenohd)
+        if [[ -z "${ROUTER_PID}" ]]; then
+          echo -e "\033[31m[ERROR] zenoh router failed to start (no zenohd process found). Check the router config path (ZENOH_ROUTER_CONFIG_URI).\033[0m"
+          exit 1
+        fi
         echo "Spawned zenoh router with PID ${ROUTER_PID}"
       fi
 
