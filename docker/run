@@ -12,11 +12,11 @@
 #
 # Usage:
 # From the root of this repo,
-#   docker/run -d [ROS_DISTRO] -a [ARCH] -i [ROS_DOMAIN_ID] -x SYSTEM_EXECUTOR
+#   docker/run -d [ROS_DISTRO] -a [ARCH] -i [ROS_DOMAIN_ID] -x SYSTEM_EXECUTOR -T SYSTEM_EXECUTOR_THREADS
 # =================================================================================================
 
 usage() {
-  echo "Usage: $0 [-d <ros_distro>] [-a <architecture>] [-i <ros_domain_id>] [-x <system_executor>]"
+  echo "Usage: $0 [-d <ros_distro>] [-a <architecture>] [-i <ros_domain_id>] [-x <system_executor>] [-T <threads>]"
   exit 1
 }
 
@@ -24,6 +24,7 @@ ROS_DISTRO="jazzy"
 ARCH="$(dpkg --print-architecture)"
 ROS_DOMAIN_ID="28"
 SYSTEM_EXECUTOR="EventsExecutor"
+SYSTEM_EXECUTOR_THREADS="0"
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -44,6 +45,10 @@ while [[ $# -gt 0 ]]; do
     SYSTEM_EXECUTOR="$2"
     shift 2
     ;;
+  -t | --threads)
+    SYSTEM_EXECUTOR_THREADS="$2"
+    shift 2
+    ;;
   *)
     echo "Unknown option: $key"
     usage
@@ -62,6 +67,11 @@ if [ ! -d "${BENCHMARK_RESULTS_DIR}" ]; then
   mkdir -p "${BENCHMARK_RESULTS_DIR}";
 fi
 
+if [[ "${SYSTEM_EXECUTOR_THREADS}" == "0" ]] &&
+   [[ "${SYSTEM_EXECUTOR}" == "MultiThreadedExecutor" || "${SYSTEM_EXECUTOR}" == "EventsCBGExecutor" ]]; then
+  echo "[WARN] ${SYSTEM_EXECUTOR} will use std::thread::hardware_concurrency() threads. Pass -t <n> to specify a thread count."
+fi
+
 echo "Benchmark results will be available on your machine at" ${BENCHMARK_RESULTS_DIR}
 
 docker run -it --rm --network=host --privileged --shm-size=1000mb \
@@ -71,5 +81,6 @@ docker run -it --rm --network=host --privileged --shm-size=1000mb \
 -e ROS_DOMAIN_ID=${ROS_DOMAIN_ID} \
 -e IMAGE_NAME=${IMAGE_NAME} \
 -e SYSTEM_EXECUTOR=${SYSTEM_EXECUTOR} \
+-e SYSTEM_EXECUTOR_THREADS=${SYSTEM_EXECUTOR_THREADS} \
 --name="${APP_NAME}-${ROS_DISTRO}-${ARCH}" \
 ${IMAGE_NAME}
