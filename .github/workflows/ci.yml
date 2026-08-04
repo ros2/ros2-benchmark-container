@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [rolling]
+
+jobs:
+  build-and-benchmark:
+    name: ${{ matrix.distro }}
+    runs-on: ${{ matrix.os }}
+    # todo: @skyegalaxy - add back once rclcpp w/ CBG Executor is available on kilted
+    continue-on-error: ${{ matrix.distro == 'kilted' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: jazzy
+            os: ubuntu-24.04
+          - distro: kilted
+            os: ubuntu-24.04
+          - distro: lyrical
+            os: ubuntu-26.04
+          - distro: rolling
+            os: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        # docker/build runs `docker buildx bake amd64 --load` and tags
+        # ros2-benchmark-container:${{ matrix.distro }}-amd64.
+        # To enable a GHA build cache, export the buildx runtime token and set
+        # BAKE_EXTRA_ARGS (e.g. --set *.cache-from=type=gha,scope=<distro> ...).
+        run: docker/build -d ${{ matrix.distro }}
+      - name: Run CI benchmarks + generate report
+        # No --privileged and SKIP_CPU_GOVERNOR=1: GHA runners have no cpufreq
+        # sysfs. benchmark/ is bind-mounted (it is not baked into the image) so
+        # the CI confs and gated runners come from the checkout.
+        run: |
+          mkdir -p benchmark_results/ci
+          docker run --rm --shm-size=1000mb \
+            -v "$GITHUB_WORKSPACE/benchmark:/ws/src/ros2_benchmark_container/benchmark" \
+            -v "$GITHUB_WORKSPACE/benchmark_results/ci:/benchmark_results/ci" \
+            -e SKIP_CPU_GOVERNOR=1 \
+            -e ROS2_BENCHMARK_TEST_DURATION=1 \
+            -e ROS2_BENCHMARK_OUTPUT_DIR=/benchmark_results/ci \
+            -e ROS2_BENCHMARK_SCRIPTS_DIR=/ws/src/ros2_benchmark_container/benchmark/scripts \
+            -e PERF_FRAMEWORK_INSTALL_DIR=/ws/install/lib \
+            ros2-benchmark-container:${{ matrix.distro }}-amd64 \
+            bash -c '
+              # No set -u: ROS setup.bash references unset vars (AMENT_TRACE_SETUP_FILES).
+              set -eo pipefail
+              source /opt/ros/${{ matrix.distro }}/setup.bash
+              source /ws/install/setup.bash
+              SCRIPTS=/ws/src/ros2_benchmark_container/benchmark/scripts
+              BENCH=/ws/src/ros2_benchmark_container/benchmark
+              "$SCRIPTS/runners/run_single_process_benchmark.sh" "$BENCH/test-matrix/ci_single_process.conf"
+              "$SCRIPTS/runners/run_multi_process_benchmark.sh"  "$BENCH/test-matrix/ci_multi_process.conf"
+              "$SCRIPTS/runners/run_memory_benchmark.sh"         "$BENCH/test-matrix/ci_memory_test.conf"
+              "$BENCH/generate_all_metrics.sh" /benchmark_results/ci --skip-long-tests --skip-remote-tests
+            '
+      - name: Assert report artifacts exist
+        run: |
+          set -e
+          pdf=$(find benchmark_results/ci -name 'report_*.pdf' | head -n1)
+          csv=$(find benchmark_results/ci -path '*/parsed_results/*.csv' | head -n1)
+          png=$(find benchmark_results/ci -name '*.png' | head -n1)
+          [ -n "$pdf" ] || { echo "FAIL: no report_*.pdf produced"; exit 1; }
+          [ -n "$csv" ] || { echo "FAIL: no parsed CSV produced"; exit 1; }
+          [ -n "$png" ] || { echo "FAIL: no PNG produced"; exit 1; }
+          echo "OK: $pdf | $csv | $png"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-benchmark-report-${{ matrix.distro }}
+          path: benchmark_results/ci
+          if-no-files-found: warn

@@ -840,7 +840,7 @@ def generate_report(
         "with an extremely long publishing period, set to 1 hour, ensuring that no actual messages are transmitted during the test duration. <br/><br/>"
         "The test is configured using the <i>single_process_pub_sub_idle.conf</i> file, which sets the pub_sub_idle topology. "
         "This topology defines an idle_pub_node with a publisher sending stamped100kb messages at an extremely low frequency "
-        "(3600000 Hz, simulating 1 hour period), and an idle_sub_node subscribing to the same idle_topic. <br/><br/>"
+        "(period_ms: 3600000, i.e. one publish per hour), and an idle_sub_node subscribing to the same idle_topic. <br/><br/>"
         "The test runs for at least 1 minute to avoid measurement bias caused by CPU spikes typically observed during node startup or shutdown.",
     )
     add_plot(elements, results_dir, "cpu_usage_over_time_idle_local_test")

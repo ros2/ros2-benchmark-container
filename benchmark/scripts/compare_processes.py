@@ -191,8 +191,17 @@ def compare_latency(results_file: str, show_console: bool = False) -> dict:
         for rmw, data in middleware.items():
             results_data = []
             for payload, processes in data.items():
-                multi_process_data = ast.literal_eval(processes["multi_process"])
-                single_process_data = ast.literal_eval(processes["single_process"])
+                multi_raw = processes["multi_process"]
+                single_raw = processes["single_process"]
+                if multi_raw is None or single_raw is None:
+                    missing = "multi-process" if multi_raw is None else "single-process"
+                    print(
+                        f"Warning: skipping latency comparison for {topic}/{rmw}/{payload} - "
+                        f"no {missing} data found."
+                    )
+                    continue
+                multi_process_data = ast.literal_eval(multi_raw)
+                single_process_data = ast.literal_eval(single_raw)
                 pvalue = None
 
                 # Perform a t-test to determine if the multi-process latency is less than the single-process latency
@@ -277,6 +286,16 @@ def compare_cpu_usage(results_file: str, show_console: bool = False) -> dict:
         for payload, processes in data.items():
             multi_process_data = processes["multi_process"]
             single_process_data = processes["single_process"]
+
+            if multi_process_data is None or single_process_data is None:
+                missing = (
+                    "multi-process" if multi_process_data is None else "single-process"
+                )
+                print(
+                    f"Warning: skipping CPU comparison for {rmw}/{payload} - "
+                    f"no {missing} data found."
+                )
+                continue
 
             p_left, mean_x1, mean_x2, std_dev_x1, std_dev_x2 = perform_z_test(
                 multi_process_data, single_process_data, middleware
