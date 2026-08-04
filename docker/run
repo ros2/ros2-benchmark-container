@@ -12,11 +12,11 @@
 #
 # Usage:
 # From the root of this repo,
-#   docker/run -d [ROS_DISTRO] -a [ARCH] -i [ROS_DOMAIN_ID] -x SYSTEM_EXECUTOR -T SYSTEM_EXECUTOR_THREADS
+#   docker/run -d [ROS_DISTRO] -a [ARCH] -i [ROS_DOMAIN_ID] -x SYSTEM_EXECUTOR -t SYSTEM_EXECUTOR_THREADS
 # =================================================================================================
 
 usage() {
-  echo "Usage: $0 [-d <ros_distro>] [-a <architecture>] [-i <ros_domain_id>] [-x <system_executor>] [-T <threads>]"
+  echo "Usage: $0 [-d <ros_distro>] [-a <architecture>] [-i <ros_domain_id>] [-x <system_executor>] [-t <threads>]"
   exit 1
 }
 
