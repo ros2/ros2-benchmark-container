@@ -4,3 +4,7 @@ repositories:
     type: git
     url: https://github.com/ros2/ros2-performance.git
     version: rolling
+  external/ros2/rclcpp:
+    type: git
+    url: https://github.com/ros2/rclcpp.git
+    version: jm/cbg_perf_improvement
