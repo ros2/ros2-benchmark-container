@@ -39,6 +39,8 @@ jobs:
         # To enable a GHA build cache, export the buildx runtime token and set
         # BAKE_EXTRA_ARGS (e.g. --set *.cache-from=type=gha,scope=<distro> ...).
         run: docker/build -d ${{ matrix.distro }}
+      - name: Overlay workspace integration test (docker/run -w)
+        run: docker/test-overlay.sh ${{ matrix.distro }}
       - name: Run CI benchmarks + generate report
         # No --privileged and SKIP_CPU_GOVERNOR=1: GHA runners have no cpufreq
         # sysfs. benchmark/ is bind-mounted (it is not baked into the image) so
