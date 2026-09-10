@@ -124,6 +124,12 @@ if [[ -n "${SYSTEM_EXECUTOR_THREADS}" && "${SYSTEM_EXECUTOR_THREADS}" -gt 0 ]]; 
   THREADS_OPTION="--threads ${SYSTEM_EXECUTOR_THREADS}"
 fi
 
+# Callback group type for the nodes' entities.
+CALLBACK_GROUP_OPTION=""
+if [[ -n "${SYSTEM_CALLBACK_GROUP_TYPE}" ]]; then
+  CALLBACK_GROUP_OPTION="--callback-group-type ${SYSTEM_CALLBACK_GROUP_TYPE}"
+fi
+
 # Set CPU governor to 'performance' mode for consistent results.
 # CI runners (e.g. GitHub-hosted) have no cpufreq sysfs and cannot change the
 # governor, so honor SKIP_CPU_GOVERNOR=1 to skip this tuning entirely. Unset (the

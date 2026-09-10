@@ -92,7 +92,7 @@ for RMW in "${RMW_LIST[@]}"; do
 
       # --- Local Benchmark Execution ---
       # Construct and execute the main benchmark command.
-      COMMAND="${IROBOT_BENCHMARK} ${TOPOLOGY_PATH} --executor ${EXECUTOR_ARG} ${THREADS_OPTION} ${IPC_OPTION} -t ${ROS2_BENCHMARK_TEST_DURATION} -s 1000 --csv-out on --results-dir ${RESULT_FOLDER}"
+      COMMAND="${IROBOT_BENCHMARK} ${TOPOLOGY_PATH} --executor ${EXECUTOR_ARG} ${THREADS_OPTION} ${CALLBACK_GROUP_OPTION} ${IPC_OPTION} -t ${ROS2_BENCHMARK_TEST_DURATION} -s 1000 --csv-out on --results-dir ${RESULT_FOLDER}"
       echo -e "     Command: \n       $COMMAND"
 
       eval "$COMMAND"
