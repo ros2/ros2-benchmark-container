@@ -60,21 +60,20 @@ PARENT_DIR=$(dirname "${THIS_DIR}")
 cd "$PARENT_DIR"
 
 # Populate external/ from external.repos before the build copies it into the
-# image. An existing checkout in external/ros2-performance (e.g. a fork under
-# active development) is left untouched.
-if [ -d external/ros2-performance ]; then
-  echo "external/ros2-performance already present; leaving it as-is."
-else
-  if ! command -v vcs >/dev/null 2>&1; then
-    echo "ERROR: external/ros2-performance is missing and vcstool ('vcs') is not installed."
-    echo "Install it (e.g. 'pipx install vcstool') or run 'vcs import --input external.repos .' yourself."
-    exit 1
-  fi
-  if ! vcs import --input external.repos --recursive .; then
-    echo "ERROR: 'vcs import' failed, so external/ was not populated."
+# image. --skip-existing imports any manifest entry that isn't checked out yet
+# (so adding a new repo Just Works)
+if command -v vcs >/dev/null 2>&1; then
+  if ! vcs import --input external.repos --recursive --skip-existing .; then
+    echo "ERROR: 'vcs import' failed, so external/ was not fully populated."
     echo "If this is a pkg_resources error, vcstool needs setuptools<82 (vcstool#292)."
     exit 1
   fi
+elif [ ! -d external/ros2-performance ]; then
+  echo "ERROR: external/ is not populated and vcstool ('vcs') is not installed."
+  echo "Install it (e.g. 'pipx install vcstool') or run 'vcs import --input external.repos --recursive .' yourself."
+  exit 1
+else
+  echo "vcstool ('vcs') not found; using the existing external/ checkout as-is."
 fi
 # Log what will be built, but never let a missing/broken vcs abort the build.
 if command -v vcs >/dev/null 2>&1; then
