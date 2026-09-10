@@ -63,6 +63,7 @@ cd "$PARENT_DIR"
 # image. --skip-existing imports any manifest entry that isn't checked out yet
 # (so adding a new repo Just Works)
 if command -v vcs >/dev/null 2>&1; then
+  echo "Cloning external dependencies..."
   if ! vcs import --input external.repos --recursive --skip-existing .; then
     echo "ERROR: 'vcs import' failed, so external/ was not fully populated."
     echo "If this is a pkg_resources error, vcstool needs setuptools<82 (vcstool#292)."
