@@ -28,6 +28,7 @@ jobs:
       - name: Install vcstool
         run: |
           pipx install vcstool
+          pipx inject vcstool setuptools
           echo "$(pipx environment --value PIPX_BIN_DIR)" >> "$GITHUB_PATH"
       - uses: docker/setup-buildx-action@v3
       - name: Build image

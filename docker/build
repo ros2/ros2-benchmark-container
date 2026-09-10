@@ -60,17 +60,23 @@ PARENT_DIR=$(dirname "${THIS_DIR}")
 cd "$PARENT_DIR"
 
 # Populate external/ from external.repos before the build copies it into the
-# image. --skip-existing leaves an existing checkout alone, so a local fork
-# under active development in external/ros2-performance is never clobbered; a
-# fresh clone gets the pinned commit. Bump the pin in external.repos to change
-# what is built.
-if ! command -v vcs >/dev/null 2>&1; then
-  echo "ERROR: vcstool ('vcs') not found. Install it with: sudo apt install python3-vcstool"
-  exit 1
+# image. An existing checkout in external/ros2-performance (e.g. a fork under
+# active development) is left untouched.
+if [ -d external/ros2-performance ]; then
+  echo "external/ros2-performance already present; leaving it as-is."
+else
+  if ! command -v vcs >/dev/null 2>&1; then
+    echo "ERROR: external/ros2-performance is missing and vcstool ('vcs') is not installed."
+    echo "Install it (e.g. 'pipx install vcstool') or run 'vcs import --input external.repos .' yourself."
+    exit 1
+  fi
+  vcs import --input external.repos .
 fi
-vcs import --input external.repos --skip-existing .
-echo "Building from these external sources:"
-vcs export --exact external 2>/dev/null || vcs export external
+# Log what will be built, but never let a missing/broken vcs abort the build.
+if command -v vcs >/dev/null 2>&1; then
+  echo "Building from these external sources:"
+  vcs export --exact external 2>/dev/null || true
+fi
 
 echo "Building $ARCH ROS 2 Benchmark Container for ROS ${ROS_DISTRO}."
 # BAKE_EXTRA_ARGS lets CI inject cache flags (e.g. --set *.cache-from=type=gha,...)

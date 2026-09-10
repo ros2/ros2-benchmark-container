@@ -1,0 +1,12 @@
+# This file must exist. Without a .dockerignore, BuildKit falls back to
+# .gitignore for a local git build context, which excludes external/
+#
+# The Dockerfile only COPYs ./external, so keep the context lean by dropping
+# git metadata, caches, and result trees. Do NOT exclude external/ itself.
+.git
+**/.git
+**/__pycache__/
+benchmark_results/
+external/benchmark_results/
+external/ros2-performance/benchmark_results/
+.vscode/
