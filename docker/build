@@ -70,7 +70,7 @@ else
     echo "Install it (e.g. 'pipx install vcstool') or run 'vcs import --input external.repos .' yourself."
     exit 1
   fi
-  if ! vcs import --input external.repos .; then
+  if ! vcs import --input external.repos --recursive .; then
     echo "ERROR: 'vcs import' failed, so external/ was not populated."
     echo "If this is a pkg_resources error, vcstool needs setuptools<82 (vcstool#292)."
     exit 1

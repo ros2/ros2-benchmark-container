@@ -50,7 +50,7 @@ The benchmark results can be used to:
     ```bash
     git clone <repository-url>
     cd ros2_benchmark_container
-    vcs import --input external.repos .
+    vcs import --input external.repos --recursive .
     ```
 
 2.  **Set up the Buildkit builder:**
