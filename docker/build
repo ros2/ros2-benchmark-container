@@ -70,7 +70,11 @@ else
     echo "Install it (e.g. 'pipx install vcstool') or run 'vcs import --input external.repos .' yourself."
     exit 1
   fi
-  vcs import --input external.repos .
+  if ! vcs import --input external.repos .; then
+    echo "ERROR: 'vcs import' failed, so external/ was not populated."
+    echo "If this is a pkg_resources error, vcstool needs setuptools<82 (vcstool#292)."
+    exit 1
+  fi
 fi
 # Log what will be built, but never let a missing/broken vcs abort the build.
 if command -v vcs >/dev/null 2>&1; then

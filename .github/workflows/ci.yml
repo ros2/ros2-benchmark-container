@@ -26,9 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install vcstool
+        # vcstool imports pkg_resources, which setuptools removed in v82 (Feb
+        # 2026), so pin setuptools<82 in the pipx venv. https://github.com/dirk-thomas/vcstool/issues/292
         run: |
           pipx install vcstool
-          pipx inject vcstool setuptools
+          pipx inject vcstool "setuptools<82"
           echo "$(pipx environment --value PIPX_BIN_DIR)" >> "$GITHUB_PATH"
       - uses: docker/setup-buildx-action@v3
       - name: Build image
