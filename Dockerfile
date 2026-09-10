@@ -85,6 +85,9 @@ ENV PERF_FRAMEWORK_INSTALL_DIR=${COLCON_INSTALL_DIR}/lib
 COPY --from=builder ${COLCON_INSTALL_DIR} ${COLCON_INSTALL_DIR}
 # Automatically source environment variables on login
 RUN echo 'source ${COLCON_INSTALL_DIR}/setup.bash' >> ~/.bashrc
+# If an overlay workspace was mounted (docker/run -w <ws>), source it after the
+# base install so its packages (e.g. a source-built rclcpp) shadow the image's.
+RUN echo '[ -f /overlay_ws/install/setup.bash ] && source /overlay_ws/install/setup.bash' >> ~/.bashrc
 # Add aliases for the main benchmark scripts.
 RUN echo 'alias run_single_process_benchmark="${COLCON_SRC_DIR}/ros2_benchmark_container/benchmark/scripts/runners/run_single_process_benchmark.sh"' >> ~/.bashrc
 RUN echo 'alias run_multi_process_benchmark="${COLCON_SRC_DIR}/ros2_benchmark_container/benchmark/scripts/runners/run_multi_process_benchmark.sh"' >> ~/.bashrc
