@@ -42,12 +42,15 @@ The benchmark results can be used to:
 
 ### Setup
 
-1.  **Clone the repository and initialize submodules:**
+1.  **Clone the repository and import external sources:**
+
+    `ros2-performance` is vendored with [vcstool](https://github.com/dirk-thomas/vcstool).
+    `docker/build` imports it automatically, so this step is only needed if you want the sources checked out before building.
 
     ```bash
     git clone <repository-url>
     cd ros2_benchmark_container
-    git submodule update --init --recursive
+    vcs import --input external.repos .
     ```
 
 2.  **Set up the Buildkit builder:**
@@ -159,7 +162,7 @@ The Docker container provides a standardized environment with the following key 
     -   `rmw_cyclonedds_cpp`
     -   `rmw_zenoh_cpp`
 -   **Benchmarking Tools:**
-    -   [ros2-performance](https://github.com/irobot-ros/ros2-performance): The underlying framework used to create and run the performance tests. This is a public iRobot repository, and the code is included in this project as a git submodule in the `external/` folder.
+    -   [ros2-performance](https://github.com/irobot-ros/ros2-performance): The underlying framework used to create and run the performance tests. This is a public iRobot repository, vendored into the `external/` folder via [vcstool](https://github.com/dirk-thomas/vcstool) (see `external.repos`).
 -   **Analysis Tools:**
     -   `pandas`, `numpy`, `matplotlib`, `scipy`: For data manipulation, analysis, and plotting.
     -   `reportlab`: For generating the final PDF report.
@@ -175,7 +178,7 @@ By default, the EventsExecutor is used, but you can specify an alternate executo
 docker/run -x SingleThreadedExecutor
 ```
 
-By default, available executors are the `SingleThreadedExecutor`, `EventsExecutor` and `MultiThreadedExecutor`. If you have an executor from a different package that you'd like to benchmark, add it as a submodule in `/external`, include it in the `package.xml` and `CMakeLists.txt` for `ros2-performance`, add it to the list of available executors and extend the list of executors in `run_single_process_benchmark` and `run_multi_process_benchmark`.
+By default, available executors are the `SingleThreadedExecutor`, `EventsExecutor`, `EventsCBGExecutor` and `MultiThreadedExecutor`. If you have an executor from a different package (or change to the client libraries) that you'd like to benchmark, add it to `external.repos` (or drop it into `external/`), include it in the `package.xml` and `CMakeLists.txt` for `ros2-performance`, add it to the list of available executors and extend the list of executors in `run_single_process_benchmark` and `run_multi_process_benchmark`.
 
 An example for how to modify `ros2-performance` to add a new executor can be found [here](https://github.com/irobot-ros/ros2-performance/commit/71335ba88f5196a02b06a197cf5cae32b4ffb607). 
 
@@ -240,7 +243,8 @@ Convenience tools are included to deploy benchmark containers built on this host
     .
     ├── benchmark/              # Scripts and configurations for running benchmarks
     ├── docker/                 # Helper scripts for building and running the Docker container
-    ├── external/               # Git submodules for external projects (e.g., ros2-performance)
+    ├── external/               # External projects imported via vcstool (external.repos), e.g. ros2-performance
+    ├── external.repos          # vcstool manifest pinning external/ sources
     ├── Dockerfile              # Dockerfile for building the benchmark environment
     ├── docker-bake.hcl         # Docker bake file for multi-platform builds
     ├── CONTRIBUTING.md         # Contribution guidelines

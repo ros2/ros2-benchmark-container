@@ -1,0 +1,13 @@
+# External sources vendored into external/ via vcstool (`vcs import`).
+# docker/build imports this file before building the image; a local checkout
+# under external/ (e.g. a fork under active development) is left untouched
+# because docker/build passes --skip-existing.
+#
+# Pinned to a commit, not a branch: the Docker layer cache keys on the copied
+# tree, so a moving branch would silently reuse a stale build. Bump the SHA
+# here when the upstream ros2-performance changes you want are merged.
+repositories:
+  external/ros2-performance:
+    type: git
+    url: https://github.com/ros2/ros2-performance.git
+    version: 28ec610f8029317042c88ade78af80e559d2142c
