@@ -182,6 +182,29 @@ By default, available executors are the `SingleThreadedExecutor`, `EventsExecuto
 
 An example for how to modify `ros2-performance` to add a new executor can be found [here](https://github.com/irobot-ros/ros2-performance/commit/71335ba88f5196a02b06a197cf5cae32b4ffb607). 
 
+### Overlaying a local workspace
+
+To benchmark a change to a client library (e.g. a modified `rclcpp`) without baking it into the image, overlay a local colcon workspace with the `-w` option. It has two complementary halves:
+
+**At build time**, `docker/build -w` installs the workspace's dependencies into the image so the workspace can be built against it later. The workspace itself is *not* copied or built into the image. Use `--skip-keys` for any rosdep keys that should not be installed:
+
+```bash
+docker/build -d rolling -w ~/ros/my_ws --skip-keys "fastcdr rti-connext-dds-7.7.0"
+```
+
+**At run time**, `docker/run -w` mounts the same workspace at `/overlay_ws` and sources it on top of the base install, so its packages shadow the image's:
+
+```bash
+docker/run -d rolling -w ~/ros/my_ws
+# inside the container, build the workspace once (its deps are already present):
+cd /overlay_ws && colcon build
+# re-source (or reattach with docker/attach) so the overlay is active, then run:
+source /overlay_ws/install/setup.bash
+run_all_benchmarks
+```
+
+Ensure the workspace was built **inside this or an equivalent container** so its ABI matches the image.host-native builds may not load cleanly.
+
 ### Adding a new test matrix
 
 The `benchmark/test-matrix` directory contains configuration files that define the test matrices for the benchmarks. Each file specifies a set of tests to be run with different configurations.

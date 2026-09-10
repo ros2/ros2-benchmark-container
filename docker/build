@@ -16,23 +16,37 @@
 
 # Supported ROS 2 distributions
 usage() {
-  echo "Usage: $0 [-d <ros_distro>] [-a <architecture>]"
+  echo "Usage: $0 [-d <ros_distro>] [-a <architecture>] [-w <overlay_workspace>] [--skip-keys <keys>]"
+  echo "  -w <overlay_workspace>: install a local workspace's dependencies into the image"
+  echo "                          so it can be built against the container later (docker/run -w)."
+  echo "                          The workspace itself is not copied or built into the image."
+  echo "  --skip-keys <keys>:     space-separated rosdep keys to skip when resolving those deps."
   exit 1
 }
 SUPPORTED_DISTROS=("jazzy" "kilted" "lyrical" "rolling")
 # The ROS distribution to build the container for (default is "jazzy")
 ROS_DISTRO="jazzy"
 ARCH="$(dpkg --print-architecture)"
+OVERLAY_WS=""
+ROSDEP_SKIP_KEYS=""
 
 while [[ $# -gt 0 ]]; do
   key="$1"
-  case $key in 
+  case $key in
   -d | --distro)
     ROS_DISTRO="$2"
     shift 2
     ;;
   -a | --architecture)
     ARCH="$2"
+    shift 2
+    ;;
+  -w | --workspace)
+    OVERLAY_WS="$2"
+    shift 2
+    ;;
+  --skip-keys)
+    ROSDEP_SKIP_KEYS="$2"
     shift 2
     ;;
   *)
@@ -48,6 +62,26 @@ if [[ ! "${SUPPORTED_DISTROS[@]}" =~ "${ROS_DISTRO}" ]]; then
     echo "Supported distributions are: ${SUPPORTED_DISTROS[*]}. Default to 'jazzy'."
     exit 1
 fi
+
+# Optionally install a local workspace's dependencies into the image
+# (docker/build -w), so that workspace can be built against this container later
+# (e.g. mounted via docker/run -w) with its deps already present. Only the deps
+# are installed -- the workspace itself is NOT copied or built in. rosdep
+# resolves them; use --skip-keys for any that must not be installed. Resolve the
+# path here, before we cd into the repo, so a relative -w is against the caller's
+# cwd. Left unset, docker-bake.hcl defaults the overlay to an empty placeholder.
+if [[ -n "${OVERLAY_WS}" ]]; then
+  OVERLAY_SRC="${OVERLAY_WS}"
+  [[ -d "${OVERLAY_WS}/src" ]] && OVERLAY_SRC="${OVERLAY_WS}/src"
+  OVERLAY_CONTEXT="$(cd "${OVERLAY_SRC}" >/dev/null 2>&1 && pwd)"
+  if [[ -z "${OVERLAY_CONTEXT}" ]]; then
+    echo "ERROR: overlay workspace '${OVERLAY_WS}' not found."
+    exit 1
+  fi
+  echo "Baking overlay workspace source ${OVERLAY_CONTEXT} into the image."
+  export OVERLAY_CONTEXT
+fi
+export ROSDEP_SKIP_KEYS
 
 # Export the ROS_DISTRO variable for docker-bake.hcl
 export DISTRO="${ROS_DISTRO}"

@@ -16,7 +16,10 @@
 # =================================================================================================
 
 usage() {
-  echo "Usage: $0 [-d <ros_distro>] [-a <architecture>] [-i <ros_domain_id>] [-x <system_executor>] [-t <threads>]"
+  echo "Usage: $0 [-d <ros_distro>] [-a <architecture>] [-i <ros_domain_id>] [-x <system_executor>] [-t <threads>] [-w <overlay_workspace>]"
+  echo "  -w <overlay_workspace>: host path to a colcon workspace to mount and source"
+  echo "                          on top of the image (e.g. a source-built rclcpp)."
+  echo "                          Build it inside this container so its ABI matches."
   exit 1
 }
 
@@ -25,6 +28,7 @@ ARCH="$(dpkg --print-architecture)"
 ROS_DOMAIN_ID="28"
 SYSTEM_EXECUTOR="EventsCBGExecutor"
 SYSTEM_EXECUTOR_THREADS="0"
+OVERLAY_WS=""
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -47,6 +51,10 @@ while [[ $# -gt 0 ]]; do
     ;;
   -t | --threads)
     SYSTEM_EXECUTOR_THREADS="$2"
+    shift 2
+    ;;
+  -w | --workspace)
+    OVERLAY_WS="$2"
     shift 2
     ;;
   *)
@@ -74,10 +82,28 @@ fi
 
 echo "Benchmark results will be available on your machine at" ${BENCHMARK_RESULTS_DIR}
 
+# Optionally overlay a host colcon workspace at /overlay_ws. The container's
+# ~/.bashrc sources /overlay_ws/install/setup.bash after the base install, so
+# its packages (e.g. a source-built rclcpp) shadow the image's.
+OVERLAY_MOUNT=()
+if [[ -n "${OVERLAY_WS}" ]]; then
+  OVERLAY_WS_ABS="$(cd "${OVERLAY_WS}" >/dev/null 2>&1 && pwd)"
+  if [[ -z "${OVERLAY_WS_ABS}" ]]; then
+    echo "[ERROR] overlay workspace '${OVERLAY_WS}' not found."
+    exit 1
+  fi
+  if [[ ! -f "${OVERLAY_WS_ABS}/install/setup.bash" ]]; then
+    echo "[WARN] ${OVERLAY_WS_ABS}/install/setup.bash not found; it will only be sourced once you 'colcon build' the workspace (inside this container, for ABI match)."
+  fi
+  OVERLAY_MOUNT=(-v "${OVERLAY_WS_ABS}:/overlay_ws")
+  echo "Overlaying workspace ${OVERLAY_WS_ABS} at /overlay_ws."
+fi
+
 docker run -it --rm --network=host --privileged --shm-size=1000mb \
 -v "${BENCHMARK_RESULTS_DIR}:/benchmark_results" \
 -v "${BENCHMARK_DIR}:/ws/src/ros2_benchmark_container/benchmark" \
 -v /var/run/docker.sock:/var/run/docker.sock \
+"${OVERLAY_MOUNT[@]}" \
 -e ROS_DOMAIN_ID=${ROS_DOMAIN_ID} \
 -e IMAGE_NAME=${IMAGE_NAME} \
 -e SYSTEM_EXECUTOR=${SYSTEM_EXECUTOR} \

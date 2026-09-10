@@ -66,8 +66,18 @@ WORKDIR ${COLCON_WS_DIR}
 
 # Copy the external ROS 2 packages into the workspace.
 COPY ./external ${COLCON_SRC_DIR}/ros2_benchmark_container/
-# Source rosdeps and build everything placed in the "external" directory. 
+# Source rosdeps and build everything placed in the "external" directory.
 RUN /bin/bash -c "rosdep install --from-paths ${COLCON_SRC_DIR} --ignore-src --rosdistro ${ROS_DISTRO} -y"
+
+# Optionally install the dependencies of an external workspace (docker/build -w)
+# so it can be built against this image later (e.g. a workspace mounted via
+# docker/run -w) with its deps already present. The workspace source is
+# bind-mounted for rosdep resolution ONLY -- it is not copied or built into the
+# image. Use --skip-keys for rosdep keys that must not be installed. Defaults to
+# an empty overlay, so a plain build installs nothing extra.
+ARG ROSDEP_SKIP_KEYS=""
+RUN --mount=type=bind,from=overlay,target=/overlay_ws_src \
+    /bin/bash -c "rosdep install --from-paths /overlay_ws_src --ignore-src --rosdistro ${ROS_DISTRO} -y --skip-keys \"${ROSDEP_SKIP_KEYS}\""
 
 FROM dependencies AS builder
 # Stage 3: Builder
@@ -85,6 +95,9 @@ ENV PERF_FRAMEWORK_INSTALL_DIR=${COLCON_INSTALL_DIR}/lib
 COPY --from=builder ${COLCON_INSTALL_DIR} ${COLCON_INSTALL_DIR}
 # Automatically source environment variables on login
 RUN echo 'source ${COLCON_INSTALL_DIR}/setup.bash' >> ~/.bashrc
+# If an overlay workspace was mounted (docker/run -w <ws>), source it after the
+# base install so its packages (e.g. a source-built rclcpp) shadow the image's.
+RUN echo '[ -f /overlay_ws/install/setup.bash ] && source /overlay_ws/install/setup.bash' >> ~/.bashrc
 # Add aliases for the main benchmark scripts.
 RUN echo 'alias run_single_process_benchmark="${COLCON_SRC_DIR}/ros2_benchmark_container/benchmark/scripts/runners/run_single_process_benchmark.sh"' >> ~/.bashrc
 RUN echo 'alias run_multi_process_benchmark="${COLCON_SRC_DIR}/ros2_benchmark_container/benchmark/scripts/runners/run_multi_process_benchmark.sh"' >> ~/.bashrc

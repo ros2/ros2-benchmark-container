@@ -1,0 +1,2 @@
+# Empty placeholder used as the default build-context for the optional
+# build-time overlay workspace (docker/build -w). See docker-bake.hcl.
