@@ -180,15 +180,27 @@ start_zenoh_router_if_needed() {
 
   echo "Detected that $rmw is being benchmarked. Spawning router..."
   ${RUNNER_DIR}/run_zenoh_router.sh ${ZENOH_ROUTER_CONFIG_URI} &
+  local launcher_pid=$!
 
-  # Wait for the router to come online
-  sleep ${ZENOH_ROUTER_WAIT_TIMEOUT}
+  # Poll for zenohd rather than checking once after a fixed sleep
+  local startup_timeout="${ZENOH_ROUTER_STARTUP_TIMEOUT:-15}"
+  local deadline=$(( SECONDS + startup_timeout ))
+  ROUTER_PID=""
+  while [[ -z "${ROUTER_PID}" ]]; do
+    ROUTER_PID=$(pgrep zenohd)
+    [[ -n "${ROUTER_PID}" ]] && break
+    kill -0 "${launcher_pid}" 2>/dev/null || break
+    [[ ${SECONDS} -ge ${deadline} ]] && break
+    sleep 0.2
+  done
 
-  ROUTER_PID=$(pgrep zenohd)
   if [[ -z "${ROUTER_PID}" ]]; then
-    echo -e "\033[31m[ERROR] zenoh router failed to start (no zenohd process found). Check the router config path (ZENOH_ROUTER_CONFIG_URI).\033[0m"
+    echo -e "\033[31m[ERROR] zenoh router failed to start within ${startup_timeout}s (no zenohd process found). Check the router config path (ZENOH_ROUTER_CONFIG_URI).\033[0m"
     exit 1
   fi
+
+  # Give the router a moment to finish initializing before the benchmark connects.
+  sleep ${ZENOH_ROUTER_WAIT_TIMEOUT}
   echo "Spawned zenoh router with PID ${ROUTER_PID}"
 }
 
