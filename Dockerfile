@@ -36,6 +36,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Los_Angeles
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# Bring the whole ROS snapshot forward before installing anything else.
+RUN \
+    apt update && \
+    apt full-upgrade -y
+
 # Install system dependencies, including different RMW implementations and Python packages for data analysis.
 RUN \
     apt update && \
