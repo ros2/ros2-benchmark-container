@@ -26,7 +26,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install vcstool
-        run: sudo apt-get update && sudo apt-get install -y python3-vcstool
+        run: |
+          pipx install vcstool
+          echo "$(pipx environment --value PIPX_BIN_DIR)" >> "$GITHUB_PATH"
       - uses: docker/setup-buildx-action@v3
       - name: Build image
         # docker/build runs `docker buildx bake amd64 --load` and tags
