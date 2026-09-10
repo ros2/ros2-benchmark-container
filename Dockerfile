@@ -66,8 +66,18 @@ WORKDIR ${COLCON_WS_DIR}
 
 # Copy the external ROS 2 packages into the workspace.
 COPY ./external ${COLCON_SRC_DIR}/ros2_benchmark_container/
-# Source rosdeps and build everything placed in the "external" directory. 
+# Source rosdeps and build everything placed in the "external" directory.
 RUN /bin/bash -c "rosdep install --from-paths ${COLCON_SRC_DIR} --ignore-src --rosdistro ${ROS_DISTRO} -y"
+
+# Optionally install the dependencies of an external workspace (docker/build -w)
+# so it can be built against this image later (e.g. a workspace mounted via
+# docker/run -w) with its deps already present. The workspace source is
+# bind-mounted for rosdep resolution ONLY -- it is not copied or built into the
+# image. Use --skip-keys for rosdep keys that must not be installed. Defaults to
+# an empty overlay, so a plain build installs nothing extra.
+ARG ROSDEP_SKIP_KEYS=""
+RUN --mount=type=bind,from=overlay,target=/overlay_ws_src \
+    /bin/bash -c "rosdep install --from-paths /overlay_ws_src --ignore-src --rosdistro ${ROS_DISTRO} -y --skip-keys \"${ROSDEP_SKIP_KEYS}\""
 
 FROM dependencies AS builder
 # Stage 3: Builder

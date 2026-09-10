@@ -37,9 +37,26 @@ variable "DISTRO" {
   default = "jazzy"
 }
 
+// Local source workspace to bake into the image as a build-time overlay
+// (docker/build -w). Defaults to an empty placeholder so a plain build is a
+// no-op; docker/build overrides it with the resolved workspace source path.
+variable "OVERLAY_CONTEXT" {
+  default = "./docker/overlay-placeholder"
+}
+
+// Space-separated rosdep keys to skip when resolving the workspace's deps
+// (docker/build --skip-keys). Empty means skip nothing.
+variable "ROSDEP_SKIP_KEYS" {
+  default = ""
+}
+
 // Defines a common base target with shared configuration.
 target "_common" {
   dockerfile = "Dockerfile"
+  // Named build context consumed by the Dockerfile's `COPY --from=overlay`.
+  contexts = {
+    overlay = "${OVERLAY_CONTEXT}"
+  }
   labels = {
     "org.opencontainers.image.version" = "1.0.0"
     "org.opencontainers.image.description" = "Container for running ROS2 / rmw benchmark utilities."
@@ -62,6 +79,7 @@ target "amd64" {
   args = {
     ROS_DISTRO = distro
     BASE_IMAGE = "osrf/ros:${distro}-desktop"
+    ROSDEP_SKIP_KEYS = "${ROSDEP_SKIP_KEYS}"
   }
   platforms = ["${BAKE_LOCAL_PLATFORM}"]
 }
@@ -80,6 +98,7 @@ target "arm64" {
   args = {
     ROS_DISTRO = distro
     BASE_IMAGE = "osrf/ros:${distro}-desktop"
+    ROSDEP_SKIP_KEYS = "${ROSDEP_SKIP_KEYS}"
   }
   platforms = ["linux/arm64/v8"]
 }
