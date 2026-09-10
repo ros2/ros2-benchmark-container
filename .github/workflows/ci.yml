@@ -25,8 +25,13 @@ jobs:
             os: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      - name: Install vcstool
+        # vcstool imports pkg_resources, which setuptools removed in v82 (Feb
+        # 2026), so pin setuptools<82 in the pipx venv. https://github.com/dirk-thomas/vcstool/issues/292
+        run: |
+          pipx install vcstool
+          pipx inject --force vcstool "setuptools<82"
+          echo "$(pipx environment --value PIPX_BIN_DIR)" >> "$GITHUB_PATH"
       - uses: docker/setup-buildx-action@v3
       - name: Build image
         # docker/build runs `docker buildx bake amd64 --load` and tags
