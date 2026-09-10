@@ -23,7 +23,7 @@ usage() {
 ROS_DISTRO="jazzy"
 ARCH="$(dpkg --print-architecture)"
 ROS_DOMAIN_ID="28"
-SYSTEM_EXECUTOR="EventsExecutor"
+SYSTEM_EXECUTOR="EventsCBGExecutor"
 SYSTEM_EXECUTOR_THREADS="0"
 
 while [[ $# -gt 0 ]]; do
