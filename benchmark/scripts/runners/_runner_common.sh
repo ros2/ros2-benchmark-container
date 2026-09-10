@@ -104,9 +104,9 @@ IROBOT_BENCHMARK="${PERF_FRAMEWORK_INSTALL_DIR}/irobot_benchmark/irobot_benchmar
 # Possible args for different executor types
 declare -A EXECUTOR_ARGS=( ["SingleThreadedExecutor"]="1" ["EventsExecutor"]="2" ["MultiThreadedExecutor"]="3" ["EventsCBGExecutor"]="4")
 
-# Configure system executor, using the EventsExecutor by default.
+# Configure system executor, using the EventsCBGExecutor by default.
 if [[ -z "${SYSTEM_EXECUTOR}" ]]; then
-  SYSTEM_EXECUTOR="EventsExecutor"
+  SYSTEM_EXECUTOR="EventsCBGExecutor"
 fi
 
 if [[ -v EXECUTOR_ARGS[${SYSTEM_EXECUTOR}] ]]; then
