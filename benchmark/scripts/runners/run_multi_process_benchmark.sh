@@ -88,7 +88,7 @@ for RMW in "${RMW_LIST[@]}"; do
       # --- Local Benchmark Execution ---
       # Construct and execute the main benchmark command.
       # This launches two processes concurrently using the specified topologies.
-      COMMAND="${IROBOT_BENCHMARK} ${TOP1_PATH} ${TOP2_PATH} --executor ${EXECUTOR_ARG} ${THREADS_OPTION} --ipc off -t ${ROS2_BENCHMARK_TEST_DURATION} -s 1000 --csv-out on --results-dir ${RESULT_FOLDER}"
+      COMMAND="${IROBOT_BENCHMARK} ${TOP1_PATH} ${TOP2_PATH} --executor ${EXECUTOR_ARG} ${THREADS_OPTION} ${CALLBACK_GROUP_OPTION} --ipc off -t ${ROS2_BENCHMARK_TEST_DURATION} -s 1000 --csv-out on --results-dir ${RESULT_FOLDER}"
       echo -e "     Command: \n       $COMMAND"
 
       eval "$COMMAND"
