@@ -10,7 +10,9 @@
 Compare a set of benchmark runs, with the run as the comparison axis.
 
 Given several results directories already parsed by generate_all_metrics.sh, this
-draws grouped-bar charts with the run as the series (latency, CPU, RSS), plus a
+draws one grouped-bar chart per fixed context (process type / payload / role):
+the middleware+IPC config is on the x-axis, the runs are the series, and the fixed
+dimensions name the chart. Metrics are latency, CPU, and RSS. It also writes a
 provenance diff of which ROS-stack rows differ across the runs. Series labels and
 provenance come from each run's run_manifest.json (see capture_run_manifest.py).
 It is agnostic about why the runs differ (executor, rclcpp source, before/after).
@@ -24,7 +26,6 @@ Options:
     --filter <str>   Only include test cases whose key contains <str>
                      (e.g. 'pub-sub_single_process' or 'zenoh').
     --metrics <list> Comma-separated subset of: latency,cpu,rss (default: all).
-    --per-page <n>   Max test cases per chart figure (default: 12).
 
 A run may be given as a bare directory (label taken from its manifest, or the
 directory name if it has none) or as <dir>:<label> to override the label -- handy
@@ -33,7 +34,9 @@ for older runs made before manifests existed.
 
 import argparse
 import os
+import re
 import sys
+from collections import OrderedDict
 
 import matplotlib
 
@@ -48,11 +51,16 @@ except ImportError:  # pragma: no cover
 
 # Column name in average_metrics.csv -> (short key, axis label, chart title).
 METRICS = {
-    "latency": ("Latency_us", "Latency (us) (lower = better)", "Latency"),
+    "latency": ("Latency_us", "Latency (us)", "Latency"),
     "cpu": ("CPU", "CPU usage (% of a core)", "CPU usage"),
-    "rss": ("RSS_MB", "RSS (MB) (lower = better)", "Resident memory"),
+    "rss": ("RSS_MB", "RSS (MB)", "Resident memory"),
 }
 METRIC_COLUMN = {"latency": "Latency_us", "cpu": "CPU", "rss": "RSS_MB"}
+
+# The one axis a chart varies across its bars: the middleware + IPC config. A
+# test-case key segment is this axis when it is "<rmw>_<comm>"; everything else
+# in the key is the fixed context that names the chart.
+RMW_NAMES = ("fastrtps", "cyclonedds", "zenoh")
 
 
 class Run:
@@ -64,12 +72,21 @@ class Run:
         self.manifest = self._load_manifest()
         self.notes = (self.manifest or {}).get("notes")
         self.ros_stack = (self.manifest or {}).get("ros_stack", {})
+        self.cpu_count = (self.manifest or {}).get("host", {}).get("cpu_count")
         self.label = (
             label_override
             or (self.manifest or {}).get("label")
             or self.name
         )
         self.metrics = self._load_metrics()
+
+    def value(self, key, column):
+        """A metric value for a test case. CPU is rescaled from % of all cores
+        (as recorded) to % of a core using this run's cpu_count."""
+        v = self.metrics.get(key, {}).get(column, float("nan"))
+        if column == "CPU" and self.cpu_count:
+            v = v * self.cpu_count
+        return v
 
     def _load_manifest(self):
         path = os.path.join(self.path, "run_manifest.json")
@@ -137,35 +154,74 @@ def build_frame(runs, metric_column, key_filter):
     keys.sort()
     data = {}
     for run in runs:
-        data[run.label] = [
-            run.metrics.get(k, {}).get(metric_column, float("nan")) for k in keys
-        ]
+        data[run.label] = [run.value(k, metric_column) for k in keys]
     return pd.DataFrame(data, index=keys)
 
 
-def plot_metric(frame, title, ylabel, out_prefix, per_page):
-    """Grouped-bar chart(s) of one metric, run as the series."""
-    if frame.empty:
-        return []
+def decompose_key(key):
+    """Split a test-case key into (fixed context, varying rmw_comm variant)."""
+    parts = key.split("/")
+    for i, part in enumerate(parts):
+        head = part.split("_", 1)
+        if head[0] in RMW_NAMES and len(head) == 2:
+            context = "/".join(parts[:i] + parts[i + 1:])
+            return context, part
+    return key, "(all)"
+
+
+def build_facets(runs, metric_column, key_filter):
+    """Group test cases into per-context facets: {context: DataFrame}.
+
+    Each facet is one fixed context (process type / payload / role); within it the
+    rows are the rmw_comm variants and the columns are the runs. This is the
+    faceting that keeps the varying axis (middleware/IPC) on the bars and the
+    fixed dimensions in the chart title.
+    """
+    variants = OrderedDict()
+    values = {}
+    for run in runs:
+        for key in run.metrics:
+            if key_filter and key_filter not in key:
+                continue
+            context, variant = decompose_key(key)
+            variants.setdefault(context, [])
+            if variant not in variants[context]:
+                variants[context].append(variant)
+            values.setdefault(context, {}).setdefault(run.label, {})[variant] = (
+                run.value(key, metric_column)
+            )
+    facets = OrderedDict()
+    for context, variant_list in variants.items():
+        cols = {}
+        for run in runs:
+            per_run = values.get(context, {}).get(run.label, {})
+            cols[run.label] = [per_run.get(v, float("nan")) for v in variant_list]
+        facets[context] = pd.DataFrame(cols, index=variant_list)
+    return facets
+
+
+def _context_slug(context):
+    return re.sub(r"[^a-z0-9]+", "_", context.lower()).strip("_")
+
+
+def plot_facets(facets, title, ylabel, out_prefix):
+    """One grouped-bar chart per facet: rmw_comm on the x-axis, runs as series."""
     written = []
-    n_pages = (len(frame) + per_page - 1) // per_page
-    for page in range(n_pages):
-        chunk = frame.iloc[page * per_page:(page + 1) * per_page]
+    for context, frame in facets.items():
+        # Skip facets with nothing to show (e.g. publisher-side latency is all 0).
+        if frame.empty or frame.fillna(0).abs().to_numpy().sum() == 0:
+            continue
         fig, ax = plt.subplots(
-            figsize=(max(8, len(chunk) * 1.1), 6), constrained_layout=True
+            figsize=(max(5, len(frame) * 1.4), 5), constrained_layout=True
         )
-        chunk.plot(kind="bar", ax=ax, width=0.8)
+        frame.plot(kind="bar", ax=ax, width=0.8)
         ax.set_ylabel(ylabel)
-        page_note = "" if n_pages == 1 else " (page {}/{})".format(page + 1, n_pages)
-        ax.set_title("{} by run{}".format(title, page_note))
+        ax.set_title("{}\n{}".format(title, context.replace("/", "  /  ")))
         ax.set_xlabel("")
-        ax.tick_params(axis="x", labelrotation=45)
-        for label in ax.get_xticklabels():
-            label.set_ha("right")
+        ax.tick_params(axis="x", labelrotation=0)
         ax.legend(title="Run", fontsize="small")
         ax.grid(axis="y", linestyle=":", alpha=0.5)
-        suffix = "" if n_pages == 1 else "_p{}".format(page + 1)
-        out = "{}{}.png".format(out_prefix, suffix)
+        out = "{}__{}.png".format(out_prefix, _context_slug(context))
         fig.savefig(out, dpi=120)
         plt.close(fig)
         written.append(out)
@@ -275,7 +331,6 @@ def main():
         default="latency,cpu,rss",
         help="Comma-separated subset of: latency,cpu,rss.",
     )
-    parser.add_argument("--per-page", type=int, default=12, help="Test cases per figure.")
     args = parser.parse_args()
 
     if not args.run_dirs and not args.run:
@@ -311,8 +366,9 @@ def main():
         for label in frame.columns:
             wide["{}__{}".format(metric, label)] = frame[label]
         _, ylabel, title = METRICS[metric]
+        facets = build_facets(runs, column, args.filter)
         out_prefix = os.path.join(args.output, "compare_{}".format(metric))
-        written.extend(plot_metric(frame, title, ylabel, out_prefix, args.per_page))
+        written.extend(plot_facets(facets, title, ylabel, out_prefix))
 
     if wide:
         wide_df = pd.DataFrame(wide)

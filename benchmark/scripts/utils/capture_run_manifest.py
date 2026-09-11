@@ -264,6 +264,9 @@ def build_manifest(full=False):
         "host": {
             "hostname": socket.gethostname(),
             "arch": platform.machine(),
+            # Cores the benchmark saw (hardware_concurrency). cpu_perc is divided
+            # by this, so per-core CPU = cpu_perc * cpu_count.
+            "cpu_count": os.cpu_count(),
         },
         "run": {
             "distro": distro,
