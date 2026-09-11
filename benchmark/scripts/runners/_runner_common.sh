@@ -130,6 +130,19 @@ if [[ -n "${SYSTEM_CALLBACK_GROUP_TYPE}" ]]; then
   CALLBACK_GROUP_OPTION="--callback-group-type ${SYSTEM_CALLBACK_GROUP_TYPE}"
 fi
 
+# Record this run's provenance manifest from the live sourced environment. Values
+# are passed explicitly (the caller may not have exported them); '|| true' keeps a
+# manifest failure from ever breaking the benchmark.
+if command -v python3 >/dev/null 2>&1; then
+  SYSTEM_EXECUTOR="${SYSTEM_EXECUTOR}" \
+  SYSTEM_EXECUTOR_THREADS="${SYSTEM_EXECUTOR_THREADS}" \
+  SYSTEM_CALLBACK_GROUP_TYPE="${SYSTEM_CALLBACK_GROUP_TYPE}" \
+  ROS2_BENCHMARK_RUN_LABEL="${ROS2_BENCHMARK_RUN_LABEL}" \
+  ROS2_BENCHMARK_RUN_NOTES="${ROS2_BENCHMARK_RUN_NOTES}" \
+    python3 "${ROS2_BENCHMARK_SCRIPTS_DIR}/utils/capture_run_manifest.py" \
+      "${ROS2_BENCHMARK_OUTPUT_DIR}" || true
+fi
+
 # Set CPU governor to 'performance' mode for consistent results.
 # CI runners (e.g. GitHub-hosted) have no cpufreq sysfs and cannot change the
 # governor, so honor SKIP_CPU_GOVERNOR=1 to skip this tuning entirely. Unset (the

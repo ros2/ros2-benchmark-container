@@ -205,6 +205,29 @@ run_all_benchmarks
 
 Ensure the workspace was built **inside this or an equivalent container** so its ABI matches the image.host-native builds may not load cleanly.
 
+### Comparing runs
+
+Every benchmark run writes a `run_manifest.json` into its results directory recording *what actually executed*: the resolved ROS 2 stack (which `rclcpp`, `rcl`, `rmw`, and RMW implementations ran, and whether each came from the apt base, a mounted overlay workspace, or a source build, with git SHAs for the non-apt ones), the executor / thread / callback-group settings, and a human `label` + `notes`. This makes a results directory self-describing, so a comparison months later does not depend on memory.
+
+`compare_runs` takes any set of parsed run directories and draws grouped-bar charts with **the run as the series** (latency, CPU, RSS), plus a provenance diff showing which stack rows differ across the runs. It is agnostic about *why* the runs differ:
+
+```bash
+# Compare arbitrary runs; the series name comes from each run's manifest label.
+compare_runs /benchmark_results/run_a /benchmark_results/run_b --output /benchmark_results/compare
+# Relabel older runs (made before manifests existed) inline:
+compare_runs --run /benchmark_results/run_a:"EventsCBG (stock)" \
+             --run /benchmark_results/run_b:"EventsCBG (thread iso)"
+```
+
+To sweep the standard executor set (ST / EventsExecutor / MT-4t / EventsCBG-1t / EventsCBG-4t) over a pub/sub matrix and compare them in one shot, use `sweep_executors` (inside the container):
+
+```bash
+sweep_executors -t 10                       # per-executor result dirs + a comparison/
+sweep_executors --executors "EventsCBGExecutor:4:EventsCBG (4t)" --notes "apt rclcpp"
+```
+
+For a same-executor client-library A/B ("stock" vs a modified `rclcpp`), run `sweep_executors` (or the plain runners) twice against different builds/overlays, giving each a distinct `--notes`/label, then `compare_runs` the two output directories. The differing `rclcpp` git SHA is captured automatically and surfaced in the provenance diff.
+
 ### Adding a new test matrix
 
 The `benchmark/test-matrix` directory contains configuration files that define the test matrices for the benchmarks. Each file specifies a set of tests to be run with different configurations.
