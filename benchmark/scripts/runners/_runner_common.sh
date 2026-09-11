@@ -116,11 +116,14 @@ else
   exit 1
 fi
 
-# Thread count for thread-pool executors. Only forwarded when explicitly set to
-# a positive value — otherwise irobot_benchmark falls back to its own default
-# (hardware_concurrency).
+# Thread count for thread-pool executors. Default to 1 when unset (rather than
+# irobot_benchmark's hardware_concurrency) so runs don't silently oversubscribe;
+# override with SYSTEM_EXECUTOR_THREADS / docker/run.
+if [[ -z "${SYSTEM_EXECUTOR_THREADS}" ]]; then
+  SYSTEM_EXECUTOR_THREADS=1
+fi
 THREADS_OPTION=""
-if [[ -n "${SYSTEM_EXECUTOR_THREADS}" && "${SYSTEM_EXECUTOR_THREADS}" -gt 0 ]]; then
+if [[ "${SYSTEM_EXECUTOR_THREADS}" -gt 0 ]]; then
   THREADS_OPTION="--threads ${SYSTEM_EXECUTOR_THREADS}"
 fi
 
